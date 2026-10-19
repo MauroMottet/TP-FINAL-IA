@@ -17,8 +17,11 @@ Solo requiere la biblioteca estándar de Python (>= 3.8).
 import argparse
 import csv
 import os
+import random
 import sys
 from collections import Counter
+
+SEMILLA_MUESTREO = 42  # fija para que el dataset base sea reproducible
 
 def calcular_percentil_90_lineal(valores):
     """
@@ -123,9 +126,16 @@ def main():
     pct_activas = (cant_activas / total_registros_raw) * 100
 
     # 5. Selección y generación de los 2 Datasets
-    # Dataset 1 (Base): Secuencia continua de 100 eventos del régimen operativo basal/nominal
-    # Se extraen los primeros 100 registros con actividad detectable (Días 1 a 3)
-    dataset_base = filas_activas[:100]
+    # Dataset 1 (Base): régimen operativo nominal = registros con 1 o 2 alertas simultáneas.
+    # Se toma una muestra de 100 repartida en los 8 días (semilla fija -> reproducible) y se
+    # conserva el orden temporal. Tomar los primeros 100 registros dejaba red_in_alta y
+    # red_out_alta siempre en 0, porque en los días 1 a 3 la red nunca supera su P90.
+    filas_nominales = [r for r in filas_activas if r["_suma_bits"] <= 2]
+    if len(filas_nominales) < 100:
+        print(f"[ERROR] Solo hay {len(filas_nominales)} registros nominales; se necesitan 100.")
+        sys.exit(1)
+    muestra = random.Random(SEMILLA_MUESTREO).sample(filas_nominales, 100)
+    dataset_base = sorted(muestra, key=lambda r: r["_orig_idx"])
 
     # Dataset 2 (Estrés): Régimen operativo exigido con concurrencia de picos (>= 3 variables simultáneas en 1)
     filas_estres_pool = [r for r in filas_activas if r["_suma_bits"] >= 3]
