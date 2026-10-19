@@ -5,10 +5,19 @@ Trabajo Final Integrador - Inteligencia Artificial
 Genera:
   - dataset_telemetria_base.csv
   - dataset_telemetria_estres.csv
+  - metadatos_variables.csv  (umbral y significado de cada variable binaria)
+
+Uso:
+    python3 preprocesamiento_art1.py
+    python3 preprocesamiento_art1.py -i otro_archivo.csv -s carpeta_salida
+
+Solo requiere la biblioteca estándar de Python (>= 3.8).
 """
 
+import argparse
 import csv
 import os
+import sys
 from collections import Counter
 
 def calcular_percentil_90_lineal(valores):
@@ -25,15 +34,34 @@ def calcular_percentil_90_lineal(valores):
         return vals[i] + frac * (vals[i + 1] - vals[i])
     return vals[i]
 
+def parse_arguments():
+    """Argumentos opcionales: los valores por defecto reproducen los datasets del repositorio."""
+    parser = argparse.ArgumentParser(
+        prog="preprocesamiento_art1.py",
+        description="Binariza la telemetría cruda (umbral P90) y genera los datasets para CarGross.py."
+    )
+    parser.add_argument("-i", "--entrada", default="machine_usage_days_1_to_8_grouped_300_seconds.csv",
+                        help="CSV de telemetría cruda. Por defecto: %(default)s")
+    parser.add_argument("-s", "--salida-dir", default=".",
+                        help="Carpeta donde se escriben los CSV generados. Por defecto: carpeta actual")
+    return parser.parse_args()
+
 def main():
-    input_file = "machine_usage_days_1_to_8_grouped_300_seconds.csv"
-    if not os.path.exists(input_file):
-        raise FileNotFoundError(f"No se encontró el archivo: {input_file}")
+    args = parse_arguments()
+    input_file = args.entrada
+    if not os.path.isfile(input_file):
+        print(f"[ERROR] No se encontró el archivo: {input_file}")
+        sys.exit(1)
+    os.makedirs(args.salida_dir, exist_ok=True)
 
     # 1. Carga del dataset original
     with open(input_file, mode="r", encoding="utf-8") as f:
         reader = csv.DictReader(f)
         raw_rows = [row for row in reader if any(row.values())]
+
+    if not raw_rows:
+        print(f"[ERROR] El archivo {input_file} no contiene registros.")
+        sys.exit(1)
 
     total_registros_raw = len(raw_rows)
 
@@ -55,10 +83,19 @@ def main():
 
     columnas_binarias = [mapeo_columnas[c] for c in columnas_fuente]
 
+    faltantes = [c for c in columnas_fuente if c not in raw_rows[0]]
+    if faltantes:
+        print(f"[ERROR] Faltan columnas en {input_file}: {', '.join(faltantes)}")
+        sys.exit(1)
+
     # 2. Cálculo de umbrales objetivos P90
     umbrales = {}
     for col in columnas_fuente:
-        valores = [float(row[col]) for row in raw_rows]
+        try:
+            valores = [float(row[col]) for row in raw_rows]
+        except ValueError as e:
+            print(f"[ERROR] Valor no numérico en la columna {col}: {e}")
+            sys.exit(1)
         umbrales[col] = calcular_percentil_90_lineal(valores)
 
     # 3. Binarización de las métricas
@@ -95,12 +132,14 @@ def main():
     dataset_estres = filas_estres_pool[:100]
 
     # 6. Exportación a CSV limpio (sin índice, delimitado por comas)
-    archivo_base = "dataset_telemetria_base.csv"
-    archivo_estres = "dataset_telemetria_estres.csv"
+    archivo_base = os.path.join(args.salida_dir, "dataset_telemetria_base.csv")
+    archivo_estres = os.path.join(args.salida_dir, "dataset_telemetria_estres.csv")
+    archivo_metadatos = os.path.join(args.salida_dir, "metadatos_variables.csv")
 
     def exportar_csv(archivo, datos):
+        # lineterminator "\n": salida idéntica byte a byte en Windows, Linux y macOS
         with open(archivo, mode="w", newline="", encoding="utf-8") as f:
-            writer = csv.DictWriter(f, fieldnames=columnas_binarias)
+            writer = csv.DictWriter(f, fieldnames=columnas_binarias, lineterminator="\n")
             writer.writeheader()
             for row in datos:
                 # Limpieza de metadatos auxiliares
@@ -109,6 +148,22 @@ def main():
 
     exportar_csv(archivo_base, dataset_base)
     exportar_csv(archivo_estres, dataset_estres)
+
+    # Metadatos: documentan de dónde sale cada variable binaria (no los requiere CarGross.py)
+    descripciones = {
+        "cpu_alta": "Uso de CPU por encima del percentil 90 del período",
+        "ram_alta": "Uso de memoria por encima del percentil 90 del período",
+        "disco_saturado": "Uso de E/S de disco por encima del percentil 90 del período",
+        "red_in_alta": "Tráfico de red entrante por encima del percentil 90 del período",
+        "red_out_alta": "Tráfico de red saliente por encima del percentil 90 del período",
+    }
+    with open(archivo_metadatos, mode="w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f, lineterminator="\n")
+        writer.writerow(["variable_binaria", "columna_fuente", "umbral_p90", "regla", "descripcion"])
+        for col in columnas_fuente:
+            var_bin = mapeo_columnas[col]
+            writer.writerow([var_bin, col, f"{umbrales[col]:.6f}",
+                             f"1 si {col} > umbral_p90; 0 en caso contrario", descripciones[var_bin]])
 
     # 7. Informe Final de Métricas y Análisis Estadístico
     print("=" * 80)
@@ -160,6 +215,7 @@ def main():
     print("EXPORTACIÓN COMPLETADA EXITOSAMENTE:")
     print(f"  [OK] {os.path.abspath(archivo_base)}")
     print(f"  [OK] {os.path.abspath(archivo_estres)}")
+    print(f"  [OK] {os.path.abspath(archivo_metadatos)}")
     print("=" * 80)
 
 if __name__ == "__main__":

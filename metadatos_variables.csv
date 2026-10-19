@@ -1,0 +1,6 @@
+variable_binaria,columna_fuente,umbral_p90,regla,descripcion
+cpu_alta,cpu_util_percent,53.513115,1 si cpu_util_percent > umbral_p90; 0 en caso contrario,Uso de CPU por encima del percentil 90 del período
+ram_alta,mem_util_percent,91.150681,1 si mem_util_percent > umbral_p90; 0 en caso contrario,Uso de memoria por encima del percentil 90 del período
+disco_saturado,disk_io_percent,12.593725,1 si disk_io_percent > umbral_p90; 0 en caso contrario,Uso de E/S de disco por encima del percentil 90 del período
+red_in_alta,net_in,46.111538,1 si net_in > umbral_p90; 0 en caso contrario,Tráfico de red entrante por encima del percentil 90 del período
+red_out_alta,net_out,36.613133,1 si net_out > umbral_p90; 0 en caso contrario,Tráfico de red saliente por encima del percentil 90 del período
