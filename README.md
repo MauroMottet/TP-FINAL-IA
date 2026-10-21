@@ -149,6 +149,5 @@ python3 correr_experimentos.py  # sensibilidad a ρ, evolución de M, efecto del
 
 ## Referencias
 
-1. Lippmann, R. P. (1987). An Introduction to Computing with Neural Nets. *IEEE ASSP Magazine*, 4(2), 4–22.
-2. Sánchez-Sinencio, E., & Lau, C. (Eds.). (1992). *Artificial Neural Networks: Paradigms, Applications, and Hardware Implementations*. IEEE Press.
-3. Bezdek, J. C. (1981). Pattern Recognition with Fuzzy Objective Function Algorithms. Plenum Press. (Fuzzy C-Means, usado en la comparación de la FAQ.)
+1. Lippmann, R. P. (1987). An Introduction to Computing with Neural Nets. *IEEE ASSP Magazine*, 4(2), 4–22. (Modelo de Carpenter/Grossberg, algoritmo del líder y Box 3.)
+2. Bezdek, J. C. (1981). Pattern Recognition with Fuzzy Objective Function Algorithms. Plenum Press. (Fuzzy C-Means, usado en la comparación de la FAQ.)

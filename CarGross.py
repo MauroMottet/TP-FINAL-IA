@@ -1,4 +1,4 @@
-﻿"""
+"""
 CarGross.py - Implementación del Clasificador No Supervisado de Carpenter/Grossberg (ART-1)
 Referencia Teórica: Richard P. Lippmann (1987), 'An Introduction to Computing with Neural Nets', Box 3.
 Trabajo Final Integrador "Museo de Redes Neuronales" - Inteligencia Artificial
@@ -64,14 +64,6 @@ asignado (-1 = sin clasificar por falta de nodos libres).
                         help="Ruta de un CSV donde guardar la asignación fila -> clúster.")
     parser.add_argument("-v", "--verbose", action="store_true",
                         help="Muestra la asignación paso a paso de cada vector.")
-    parser.add_argument("--fuzzy", action="store_true",
-                        help="(Anexo II) Ejecuta Fuzzy C-Means (scikit-fuzzy) con el mismo "
-                             "número de clusters que estabilizó ART-1 y presenta una tabla "
-                             "comparativa. Requiere: pip install scikit-fuzzy numpy")
-    parser.add_argument("--fuzzy-c", type=int, default=None, dest="fuzzy_c",
-                        help="Fuerza el número de clusters C para Fuzzy C-Means "
-                             "(por defecto: igual al número de categorías que creó ART-1). "
-                             "Activa --fuzzy implícitamente.")
 
     # Los errores de argumentos (valor inválido, falta -d, etc.) también muestran el man
     parser.error = lambda message: fail(parser, message)
@@ -227,51 +219,6 @@ def write_assignments_csv(file_path: str, assignments: List[int]) -> None:
         for idx, c in enumerate(assignments, start=1):
             writer.writerow([idx, c])
 
-def run_fuzzy_cmeans(
-    data: List[List[int]], c: int
-) -> Tuple[List[int], List[List[float]], List[List[float]]]:
-    """
-    Ejecuta Fuzzy C-Means (FCM) como rutina comparativa con ART-1 (Anexo II).
-    Referencia: Bezdek, J. C. (1981). Pattern Recognition with Fuzzy Objective
-    Function Algorithms. Plenum Press.
-
-    Parámetros
-    ----------
-    data : lista de vectores binarios (N_patrones × N_variables)
-    c    : número de clusters C (≥ 2)
-
-    Retorna
-    -------
-    (hard_assignments, centers, u_matrix)
-      hard_assignments : índice del cluster dominante para cada patrón
-      centers          : centros continuos — lista de C listas de N floats
-      u_matrix         : u_matrix[k][i] = pertenencia del patrón i al cluster k
-
-    Requiere
-    --------
-    pip install scikit-fuzzy numpy
-    """
-    try:
-        import skfuzzy as fuzz
-        import numpy as np
-    except ImportError as exc:
-        raise ImportError(
-            "La opción --fuzzy requiere scikit-fuzzy y numpy.\n"
-            "Instálelos con:\n"
-            "  pip install scikit-fuzzy numpy\n"
-            f"(error original: {exc})"
-        ) from exc
-
-    data_np = np.array(data, dtype=float).T   # FCM espera shape (features, samples)
-    cntr, u, _, _, _, _, _ = fuzz.cmeans(
-        data_np, c=c, m=2.0, error=0.005, maxiter=1000, init=None, seed=42
-    )
-    hard_assignments: List[int] = [int(k) for k in np.argmax(u, axis=0)]
-    centers: List[List[float]] = cntr.tolist()
-    u_matrix: List[List[float]] = u.tolist()   # u_matrix[k][i]
-    return hard_assignments, centers, u_matrix
-
-
 def fail(parser: argparse.ArgumentParser, message: str) -> None:
     """Corrida infructuosa: informa el error, muestra el man y termina con código 1."""
     print(f"\n[ERROR] {message}\n")
@@ -335,80 +282,6 @@ def main():
     if args.output:
         print(f"\n Asignaciones guardadas en: {args.output}")
     print(line)
-
-    # ── Anexo II: Fuzzy C-Means comparativo ─────────────────────────────────
-    use_fuzzy = args.fuzzy or (args.fuzzy_c is not None)
-    if use_fuzzy:
-        n_fcm = args.fuzzy_c if args.fuzzy_c is not None else len(unique_clusters)
-        if n_fcm < 2:
-            print(f"\n[AVISO --fuzzy] ART-1 estabilizó solo {n_fcm} categoría(s). "
-                  "FCM requiere C ≥ 2. Use --fuzzy-c <N> para forzar el número de clusters.")
-        else:
-            try:
-                fcm_hard, fcm_centers, fcm_u = run_fuzzy_cmeans(data, n_fcm)
-            except ImportError as exc:
-                fail(parser, str(exc))
-            except Exception as exc:  # pylint: disable=broad-except
-                fail(parser, f"Fuzzy C-Means falló inesperadamente: {exc}")
-
-            from collections import Counter
-            fcm_counts: Counter = Counter(fcm_hard)
-            art1_labels = sorted(cl for cl in set(assignments) if cl != -1)
-
-            print()
-            print(line)
-            print(" ANEXO II — FUZZY C-MEANS (Bezdek 1981) — COMPARACIÓN CON ART-1")
-            print(f" C={n_fcm} clusters | m=2.0 | error=0.005 | maxiter=1000 | seed=42")
-            print(line)
-            print()
-            print(sep)
-            print(" CENTROS FCM Y DISTRIBUCIÓN DE PATRONES")
-            print(sep)
-            for k in range(n_fcm):
-                cnt = fcm_counts.get(k, 0)
-                pct = (cnt / len(data)) * 100
-                center_bin = [1 if v >= 0.5 else 0 for v in fcm_centers[k]]
-                raw_str = "[" + ", ".join(f"{v:.3f}" for v in fcm_centers[k]) + "]"
-                print(f" Cluster FCM [{k:02d}] -> {cnt:3d} instancias ({pct:5.1f}%)")
-                print(f"   Centro continuo  : {raw_str}")
-                print(f"   Centro binarizado: {center_bin}")
-                print()
-
-            # Tabla de coincidencia ART-1 × FCM
-            print(sep)
-            print(" TABLA DE COINCIDENCIA  (filas = ART-1 | columnas = FCM)")
-            print(sep)
-            col_hdr = ("  ART-1 \\ FCM |" +
-                       "".join(f" FCM{k:02d} |" for k in range(n_fcm)) +
-                       " TOTAL")
-            div = "  " + "-" * (len(col_hdr) - 2)
-            print(col_hdr)
-            print(div)
-            for a_lbl in art1_labels:
-                row_counts = [
-                    sum(1 for i, a in enumerate(assignments)
-                        if a == a_lbl and fcm_hard[i] == k)
-                    for k in range(n_fcm)
-                ]
-                cells = "".join(f"   {cnt:3d} |" for cnt in row_counts)
-                print(f"  F2 Nodo [{a_lbl:02d}]  |{cells}   {sum(row_counts):3d}")
-            print(div)
-
-            # Pureza estándar: para cada cluster FCM dominancia de etiqueta ART-1
-            purity_sum = 0
-            for k in range(n_fcm):
-                if fcm_counts.get(k, 0) > 0 and art1_labels:
-                    best = max(
-                        sum(1 for i, a in enumerate(assignments)
-                            if a == a_lbl and fcm_hard[i] == k)
-                        for a_lbl in art1_labels
-                    )
-                    purity_sum += best
-            purity = (purity_sum / len(data)) * 100 if data else 0.0
-            print(f"\n Pureza FCM<->ART-1 (mayoría dominante por cluster FCM): {purity:.1f}%")
-            print(" Nota: fracción de patrones asignados a la etiqueta ART-1 más")
-            print("       frecuente dentro de cada cluster FCM. 100 % = concordancia total.")
-            print(line)
 
 if __name__ == "__main__":
     main()

@@ -1,8 +1,2 @@
 # CarGross.py, preprocesamiento_art1.py y correr_experimentos.py
 # usan solo la biblioteca estándar de Python (>= 3.8): no hay nada que instalar.
-#
-# OPCIONAL — Anexo II (flag --fuzzy):
-# Instalar solo si se va a usar la comparación con Fuzzy C-Means:
-#   pip install scikit-fuzzy numpy
-scikit-fuzzy>=0.4.2
-numpy>=1.19
