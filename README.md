@@ -8,8 +8,8 @@ para agrupar sin supervisión los estados operativos de un servidor a partir de 
 La red crea una categoría nueva (nodo F2) cada vez que un patrón no se parece lo suficiente
 a los prototipos aprendidos; el parámetro de vigilancia ρ define qué es "suficiente".
 
-**Integrantes:** Mauro Mottet (líder, código), Agustín Scheffler (arquitectura), Candela Rojas (test),
-Florencia Colazo (documentación).
+**Integrantes:** Mauro Mottet (líder, código), Agustín Scheffler (arquitectura), Candela Rojas (documentacion),
+Florencia Colazo (test).
 **Docentes:** Dra. Daniela López De Luise, Alejandro Pérez.
 
 ## Contenido del repositorio
@@ -151,4 +151,4 @@ python3 correr_experimentos.py  # sensibilidad a ρ, evolución de M, efecto del
 
 1. Lippmann, R. P. (1987). An Introduction to Computing with Neural Nets. *IEEE ASSP Magazine*, 4(2), 4–22.
 2. Sánchez-Sinencio, E., & Lau, C. (Eds.). (1992). *Artificial Neural Networks: Paradigms, Applications, and Hardware Implementations*. IEEE Press.
-3. Carpenter, G. A., & Grossberg, S. (1987). A massively parallel architecture for a self-organizing neural pattern recognition machine. *Computer Vision, Graphics, and Image Processing*, 37(1), 54–115.
+3. Bezdek, J. C. (1981). Pattern Recognition with Fuzzy Objective Function Algorithms. Plenum Press. (Fuzzy C-Means, usado en la comparación de la FAQ.)
